@@ -6,13 +6,15 @@ let tipoActual = 'movie';
 let listaVistas = JSON.parse(localStorage.getItem('mis_vistas')) || [];
 let paginaActual = 1;
 
+// --- NUEVAS VARIABLES DE MEMORIA ---
+let listaVistas = JSON.parse(localStorage.getItem('mis_vistas')) || [];
+let listaFavoritos = JSON.parse(localStorage.getItem('mis_favoritos')) || []; // Nueva lista
+
 // --- FILTROS Y CARGA ---
 
 // 2. Modifica la función cargarContenido para que acepte el número de página
-async function cargarContenido(generoId = '', anio = '', estadoVista = 'todas', esNuevaCarga = true) {
+	async function cargarContenido(generoId = '', anio = '', estadoVista = 'todas', esNuevaCarga = true, estadoFavorito = 'todos') {
     const contenedor = document.getElementById('contenedor-principal');
-    
-    // Si es una búsqueda nueva (cambio de filtro), reseteamos la página y borramos el grid
     if (esNuevaCarga) {
         paginaActual = 1;
         contenedor.innerHTML = '<p>Buscando...</p>';
@@ -31,14 +33,18 @@ async function cargarContenido(generoId = '', anio = '', estadoVista = 'todas', 
         const datos = await respuesta.json();
         let resultados = datos.results;
 
-        // Filtramos por vistas/no vistas
+        // FILTRO 1: Por estado de Vista
         if (estadoVista === 'vistas') {
             resultados = resultados.filter(item => listaVistas.includes(item.id.toString()));
         } else if (estadoVista === 'no-vistas') {
             resultados = resultados.filter(item => !listaVistas.includes(item.id.toString()));
         }
 
-        // Llamamos a dibujar pasándole si debe borrar o añadir
+        // FILTRO 2: Por Favoritos (NUEVO)
+        if (estadoFavorito === 'solo-favoritos') {
+            resultados = resultados.filter(item => listaFavoritos.includes(item.id.toString()));
+        }
+
         dibujarCatalogo(resultados, esNuevaCarga);
     } catch (error) {
         console.error("Error:", error);
@@ -49,20 +55,14 @@ async function cargarContenido(generoId = '', anio = '', estadoVista = 'todas', 
 // 3. Modifica dibujarCatalogo para que no borre todo si estamos cargando más
 function dibujarCatalogo(lista, borrarAnterior) {
     const contenedor = document.getElementById('contenedor-principal');
-    if (borrarAnterior) {
-        contenedor.innerHTML = '';
-    }
-
-    if (lista.length === 0 && borrarAnterior) {
-        contenedor.innerHTML = '<p>No hay títulos que coincidan.</p>';
-        return;
-    }
+    if (borrarAnterior) contenedor.innerHTML = '';
 
     lista.forEach(item => {
-        // ... (todo el código interno de la tarjeta igual que antes)
         const titulo = item.title || item.name;
         const id = item.id.toString();
         const estaVista = listaVistas.includes(id);
+        const esFavorito = listaFavoritos.includes(id); // Nuevo
+        
         const tarjeta = document.createElement('div');
         tarjeta.classList.add('tarjeta');
 
@@ -72,10 +72,16 @@ function dibujarCatalogo(lista, borrarAnterior) {
             </a>
             <div class="info">
                 <h3>${titulo}</h3>
-                <label>
-                    <input type="checkbox" ${estaVista ? 'checked' : ''} onchange="toggleVista('${id}')"> 
-                    ${estaVista ? 'Vista' : 'Pendiente'}
-                </label>
+                <div class="acciones">
+                    <label>
+                        <input type="checkbox" ${estaVista ? 'checked' : ''} onchange="toggleVista('${id}')"> 
+                        ${estaVista ? 'Vista' : 'Pendiente'}
+                    </label>
+                    <label style="margin-left: 10px; color: ${esFavorito ? '#ff4757' : '#ccc'}">
+                        <input type="checkbox" ${esFavorito ? 'checked' : ''} onchange="toggleFavorito('${id}')"> 
+                        ${esFavorito ? '❤️ Fav' : '♡ Fav'}
+                    </label>
+                </div>
             </div>
         `;
         contenedor.appendChild(tarjeta);
@@ -140,8 +146,8 @@ function ejecutarFiltros() {
     const g = document.getElementById('desplegable-generos').value;
     const a = document.getElementById('desplegable-anios').value;
     const v = document.getElementById('desplegable-vistas').value;
-    cargarContenido(g, a, v);
+    const f = document.getElementById('desplegable-favoritos').value; // Nuevo
+    cargarContenido(g, a, v, true, f);
 }
-
 cargarAnios();
 cambiarTipo('movie');

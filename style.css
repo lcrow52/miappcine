@@ -11,3 +11,18 @@ header { text-align: center; margin-bottom: 20px; }
 .tarjeta h3 { font-size: 0.9rem; margin: 0; }
 .tarjeta p { font-size: 0.7rem; color: #aaa; }
 button { padding: 10px; margin: 5px; cursor: pointer; }
+
+.acciones {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    font-size: 0.8rem;
+}
+
+.acciones label {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
