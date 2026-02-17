@@ -1,28 +1,15 @@
-body { background-color: #121212; color: white; font-family: Arial, sans-serif; padding: 20px; }
-header { text-align: center; margin-bottom: 20px; }
+body { background-color: #141414; color: white; font-family: Arial, sans-serif; margin: 0; }
+header { padding: 20px; background: #000; text-align: center; }
+.filtros { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 15px; }
+select, button { padding: 8px; border-radius: 5px; border: none; cursor: pointer; }
 .grid-pelis { 
     display: grid; 
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); 
     gap: 20px; 
+    padding: 20px; 
 }
-.tarjeta { background: #222; border-radius: 8px; overflow: hidden; border: 1px solid #444; }
-.tarjeta img { width: 100%; height: auto; }
-.tarjeta .info { padding: 10px; }
-.tarjeta h3 { font-size: 0.9rem; margin: 0; }
-.tarjeta p { font-size: 0.7rem; color: #aaa; }
-button { padding: 10px; margin: 5px; cursor: pointer; }
-
-.acciones {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 10px;
-    font-size: 0.8rem;
-}
-
-.acciones label {
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
+.tarjeta { background: #1f1f1f; border-radius: 8px; overflow: hidden; transition: 0.3s; }
+.tarjeta:hover { transform: scale(1.05); }
+.tarjeta img { width: 100%; height: auto; display: block; }
+.info { padding: 10px; }
+.info h3 { font-size: 0.9rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

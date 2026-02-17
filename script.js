@@ -3,21 +3,15 @@ const URL_BASE = 'https://api.themoviedb.org/3';
 const URL_IMG = 'https://image.tmdb.org/t/p/w500';
 
 let tipoActual = 'movie';
-let listaVistas = JSON.parse(localStorage.getItem('mis_vistas')) || [];
 let paginaActual = 1;
-
-// --- NUEVAS VARIABLES DE MEMORIA ---
 let listaVistas = JSON.parse(localStorage.getItem('mis_vistas')) || [];
-let listaFavoritos = JSON.parse(localStorage.getItem('mis_favoritos')) || []; // Nueva lista
+let listaFavoritos = JSON.parse(localStorage.getItem('mis_favoritos')) || [];
 
-// --- FILTROS Y CARGA ---
-
-// 2. Modifica la función cargarContenido para que acepte el número de página
-	async function cargarContenido(generoId = '', anio = '', estadoVista = 'todas', esNuevaCarga = true, estadoFavorito = 'todos') {
+async function cargarContenido(generoId = '', anio = '', estadoVista = 'todas', esNuevaCarga = true, estadoFavorito = 'todos') {
     const contenedor = document.getElementById('contenedor-principal');
     if (esNuevaCarga) {
         paginaActual = 1;
-        contenedor.innerHTML = '<p>Buscando...</p>';
+        contenedor.innerHTML = '<p>Buscando en plataformas...</p>';
     }
 
     let url = `${URL_BASE}/discover/${tipoActual}?api_key=${API_KEY}&language=es-ES&sort_by=popularity.desc&watch_region=ES&with_watch_monetization_types=flatrate&page=${paginaActual}`;
@@ -33,26 +27,24 @@ let listaFavoritos = JSON.parse(localStorage.getItem('mis_favoritos')) || []; //
         const datos = await respuesta.json();
         let resultados = datos.results;
 
-        // FILTRO 1: Por estado de Vista
+        // Filtro Vistas
         if (estadoVista === 'vistas') {
             resultados = resultados.filter(item => listaVistas.includes(item.id.toString()));
         } else if (estadoVista === 'no-vistas') {
             resultados = resultados.filter(item => !listaVistas.includes(item.id.toString()));
         }
 
-        // FILTRO 2: Por Favoritos (NUEVO)
+        // Filtro Favoritos
         if (estadoFavorito === 'solo-favoritos') {
             resultados = resultados.filter(item => listaFavoritos.includes(item.id.toString()));
         }
 
         dibujarCatalogo(resultados, esNuevaCarga);
     } catch (error) {
-        console.error("Error:", error);
+        console.error("Error cargando contenido:", error);
     }
 }
 
-
-// 3. Modifica dibujarCatalogo para que no borre todo si estamos cargando más
 function dibujarCatalogo(lista, borrarAnterior) {
     const contenedor = document.getElementById('contenedor-principal');
     if (borrarAnterior) contenedor.innerHTML = '';
@@ -61,11 +53,10 @@ function dibujarCatalogo(lista, borrarAnterior) {
         const titulo = item.title || item.name;
         const id = item.id.toString();
         const estaVista = listaVistas.includes(id);
-        const esFavorito = listaFavoritos.includes(id); // Nuevo
+        const esFavorito = listaFavoritos.includes(id);
         
         const tarjeta = document.createElement('div');
         tarjeta.classList.add('tarjeta');
-
         tarjeta.innerHTML = `
             <a href="detalle.html?id=${id}&tipo=${tipoActual}">
                 <img src="${item.poster_path ? URL_IMG + item.poster_path : 'https://via.placeholder.com/200x300'}" alt="${titulo}">
@@ -73,58 +64,55 @@ function dibujarCatalogo(lista, borrarAnterior) {
             <div class="info">
                 <h3>${titulo}</h3>
                 <div class="acciones" style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.8rem;">
-                    <label>
+                    <label style="cursor:pointer;">
                         <input type="checkbox" ${estaVista ? 'checked' : ''} onchange="toggleVista('${id}')"> 
                         ${estaVista ? 'Vista' : 'Pendiente'}
                     </label>
-                    <label style="color: ${esFavorito ? '#ff4757' : '#ccc'}">
+                    <label style="cursor:pointer; color: ${esFavorito ? '#ff4757' : '#ccc'}">
                         <input type="checkbox" ${esFavorito ? 'checked' : ''} onchange="toggleFavorito('${id}')"> 
                         ${esFavorito ? '❤️ Fav' : '♡ Fav'}
                     </label>
                 </div>
             </div>
         `;
-
-// 4. Nueva función para el botón
-function siguientePagina() {
-    paginaActual++; // Aumentamos el contador
-    const g = document.getElementById('desplegable-generos').value;
-    const a = document.getElementById('desplegable-anios').value;
-    const v = document.getElementById('desplegable-vistas').value;
-    
-    // Llamamos a cargarContenido con 'false' para que NO borre lo que ya hay
-    cargarContenido(g, a, v, false);
+        contenedor.appendChild(tarjeta);
+    });
 }
 
-
-// (Las funciones toggleVista, cargarAnios, cambiarTipo y cargarGeneros se mantienen igual que antes)
 function toggleVista(id) {
     id = id.toString();
-    if (listaVistas.includes(id)) {
-        listaVistas = listaVistas.filter(item => item !== id);
-    } else {
-        listaVistas.push(id);
-    }
+    listaVistas.includes(id) ? listaVistas = listaVistas.filter(i => i !== id) : listaVistas.push(id);
     localStorage.setItem('mis_vistas', JSON.stringify(listaVistas));
     ejecutarFiltros();
 }
 
-function cargarAnios() {
-    const selectAnio = document.getElementById('desplegable-anios');
-    const anioActual = new Date().getFullYear();
-    for (let i = anioActual; i >= 2005; i--) {
-        let opcion = document.createElement('option');
-        opcion.value = i;
-        opcion.textContent = i;
-        selectAnio.appendChild(opcion);
-    }
+function toggleFavorito(id) {
+    id = id.toString();
+    listaFavoritos.includes(id) ? listaFavoritos = listaFavoritos.filter(i => i !== id) : listaFavoritos.push(id);
+    localStorage.setItem('mis_favoritos', JSON.stringify(listaFavoritos));
+    ejecutarFiltros();
+}
+
+function ejecutarFiltros() {
+    const g = document.getElementById('desplegable-generos').value;
+    const a = document.getElementById('desplegable-anios').value;
+    const v = document.getElementById('desplegable-vistas').value;
+    const f = document.getElementById('desplegable-favoritos').value;
+    cargarContenido(g, a, v, true, f);
+}
+
+function siguientePagina() {
+    paginaActual++;
+    const g = document.getElementById('desplegable-generos').value;
+    const a = document.getElementById('desplegable-anios').value;
+    const v = document.getElementById('desplegable-vistas').value;
+    const f = document.getElementById('desplegable-favoritos').value;
+    cargarContenido(g, a, v, false, f);
 }
 
 function cambiarTipo(nuevoTipo) {
     tipoActual = nuevoTipo;
     document.getElementById('titulo-seccion').innerText = tipoActual === 'movie' ? 'Películas' : 'Series';
-    document.getElementById('desplegable-generos').value = "";
-    document.getElementById('desplegable-anios').value = "";
     cargarGeneros();
     cargarContenido();
 }
@@ -134,17 +122,15 @@ async function cargarGeneros() {
     const datos = await res.json();
     const select = document.getElementById('desplegable-generos');
     select.innerHTML = '<option value="">Todos los géneros</option>';
-    datos.genres.forEach(genero => {
-        select.innerHTML += `<option value="${genero.id}">${genero.name}</option>`;
-    });
+    datos.genres.forEach(g => select.innerHTML += `<option value="${g.id}">${g.name}</option>`);
 }
 
-function ejecutarFiltros() {
-    const g = document.getElementById('desplegable-generos').value;
-    const a = document.getElementById('desplegable-anios').value;
-    const v = document.getElementById('desplegable-vistas').value;
-    const f = document.getElementById('desplegable-favoritos').value; // Nuevo
-    cargarContenido(g, a, v, true, f);
+function cargarAnios() {
+    const select = document.getElementById('desplegable-anios');
+    for (let i = new Date().getFullYear(); i >= 2005; i--) {
+        select.innerHTML += `<option value="${i}">${i}</option>`;
+    }
 }
+
 cargarAnios();
 cambiarTipo('movie');

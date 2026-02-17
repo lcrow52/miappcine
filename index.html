@@ -2,58 +2,54 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Mi Catálogo de Cine</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Videoteca Pro</title>
     <link rel="stylesheet" href="style.css">
-<link rel="manifest" href="manifest.json">
-
-<meta name="theme-color" content="#e50914">
-<meta name="apple-mobile-web-app-capable" content="yes">
-
-<script>
-  // Registramos el Service Worker
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js');
-  }
-</script>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#e50914">
 </head>
 <body>
     <header>
-    <h1>🎬 Mi Videoteca Personal</h1>
-    <div class="controles">
-        <button onclick="cambiarTipo('movie')">Películas</button>
-        <button onclick="cambiarTipo('tv')">Series</button>
-        
-        <select id="desplegable-generos" onchange="ejecutarFiltros()">
-            <option value="">Todos los géneros</option>
-        </select>
-
-        <select id="desplegable-anios" onchange="ejecutarFiltros()">
-            <option value="">Cualquier año</option>
+        <h1 id="titulo-seccion">Películas</h1>
+        <nav class="filtros">
+            <button onclick="cambiarTipo('movie')">Películas</button>
+            <button onclick="cambiarTipo('tv')">Series</button>
+            
+            <select id="desplegable-generos" onchange="ejecutarFiltros()">
+                <option value="">Cargando géneros...</option>
             </select>
-	<select id="desplegable-vistas" onchange="ejecutarFiltros()">
-    	<option value="todas">Todas (Vistas y No vistas)</option>
-	<option value="vistas">Solo Vistas</option>
-    	<option value="no-vistas">Solo Pendientes (No vistas)</option>
-        </select>
-        
-    <select id="desplegable-favoritos" onchange="ejecutarFiltros()">
-    <option value="todos">Todos los títulos</option>
-    <option value="solo-favoritos">❤️ Mis Favoritos</option>
-	</select>
 
-    </div>
-    <h2 id="titulo-seccion">Películas Populares</h2>
+            <select id="desplegable-anios" onchange="ejecutarFiltros()">
+                <option value="">Año (Todos)</option>
+            </select>
+
+            <select id="desplegable-vistas" onchange="ejecutarFiltros()">
+                <option value="todas">Vistas/Pendientes</option>
+                <option value="vistas">Solo Vistas</option>
+                <option value="no-vistas">Solo Pendientes</option>
+            </select>
+
+            <select id="desplegable-favoritos" onchange="ejecutarFiltros()">
+                <option value="todos">Todos los títulos</option>
+                <option value="solo-favoritos">❤️ Favoritos</option>
+            </select>
+        </nav>
     </header>
 
-    <main id="contenedor-principal" class="grid-pelis"></main>
+    <main id="contenedor-principal" class="grid-pelis">
+        </main>
 
-    <div style="text-align: center; padding: 20px;">
-        <button id="btn-cargar-mas" onclick="siguientePagina()" style="background: #e50914; border: none; padding: 15px 30px; font-size: 18px; border-radius: 30px;">
-            Ver más títulos
+    <div style="text-align: center; padding: 40px;">
+        <button id="btn-cargar-mas" onclick="siguientePagina()" style="background: #e50914; color: white; border: none; padding: 15px 40px; border-radius: 30px; cursor: pointer; font-weight: bold;">
+            Cargar más resultados
         </button>
     </div>
 
     <script src="script.js"></script>
-</body>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+    </script>
 </body>
 </html>
