@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<link rel="manifest" href="manifest.json">
+
+<meta name="theme-color" content="#e50914">
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+<script>
+  // Registramos el Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
+    <meta charset="UTF-8">
+    <title>Detalles - Mi Videoteca</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .detalle-container { display: flex; gap: 40px; padding: 40px; max-width: 1000px; margin: auto; }
+        .detalle-container img { width: 300px; border-radius: 10px; }
+        .texto-detalle { flex: 1; }
+        .boton-volver { background: #444; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; }
+	.texto-detalle a[href*="youtube"] {
+    	background: rgba(255, 0, 0, 0.1);
+    	padding: 5px 10px;
+    	border-radius: 5px;
+    	border: 1px solid #FF0000;
+	transition: 0.3s;
+}
+.texto-detalle a[href*="youtube"]:hover {
+    background: #FF0000;
+    color: white !important;
+}
+    </style>
+</head>
+<body>
+    <div id="contenido-detalle" class="detalle-container">
+        </div>
+    <script>
+        // Obtener el ID de la URL
+        const params = new URLSearchParams(window.location.search);
+const id = params.get('id');
+const tipo = params.get('tipo');
+const API_KEY = '7d58ecd9d52094c0cb6f1bd55c6d6a88'; 
+
+async function cargarDetalle() {
+    if (!id || !tipo) return;
+
+    try {
+        // 1. Pedimos los detalles básicos
+        const resDetalle = await fetch(`https://api.themoviedb.org/3/${tipo}/${id}?api_key=${API_KEY}&language=es-ES`);
+        const item = await resDetalle.json();
+
+        // 2. Pedimos los vídeos (tráilers)
+        const resVideos = await fetch(`https://api.themoviedb.org/3/${tipo}/${id}/videos?api_key=${API_KEY}&language=es-ES`);
+        const datosVideos = await resVideos.json();
+
+        // 3. Buscamos un tráiler que sea de YouTube
+        // Intentamos primero en castellano, si no, buscamos en inglés (usando una segunda petición si hace falta)
+        let trailer = datosVideos.results.find(v => v.type === 'Trailer' && v.site === 'YouTube');
+
+        // Si no hay trailer en castellano, intentamos buscar el original
+        if (!trailer) {
+            const resVideosOrg = await fetch(`https://api.themoviedb.org/3/${tipo}/${id}/videos?api_key=${API_KEY}`);
+            const datosVideosOrg = await resVideosOrg.json();
+            trailer = datosVideosOrg.results.find(v => v.type === 'Trailer' && v.site === 'YouTube');
+        }
+
+        const titulo = item.title || item.name;
+        const fecha = item.release_date || item.first_air_date || "No disponible";
+        const sinopsis = item.overview || "No hay descripción disponible en castellano.";
+        const poster = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/300x450?text=Sin+Poster';
+        
+        // Creamos el enlace de YouTube si existe el tráiler
+        const enlaceTrailer = trailer 
+            ? `<p>📺 <strong>Tráiler:</strong> <a href="https://www.youtube.com/watch?v=${trailer.key}" target="_blank" style="color: #FF0000; font-weight: bold;">Ver en YouTube</a></p>`
+            : `<p>📺 <strong>Tráiler:</strong> No disponible</p>`;
+
+        document.getElementById('contenido-detalle').innerHTML = `
+            <img src="${poster}" alt="${titulo}">
+            <div class="texto-detalle">
+                <a href="index.html" class="boton-volver">← Volver al catálogo</a>
+                <h1>${titulo}</h1>
+                <p><strong>Sinopsis:</strong> ${sinopsis}</p>
+                <p><strong>Fecha de estreno:</strong> ${fecha}</p>
+                <p><strong>Puntuación media:</strong> ⭐ ${item.vote_average.toFixed(1)}</p>
+                ${enlaceTrailer}
+            </div>
+        `;
+    } catch (error) {
+        console.error("Error al cargar:", error);
+    }
+}
+
+cargarDetalle();
+    </script>
+</body>
+</html>

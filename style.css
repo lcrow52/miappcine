@@ -1,0 +1,13 @@
+body { background-color: #121212; color: white; font-family: Arial, sans-serif; padding: 20px; }
+header { text-align: center; margin-bottom: 20px; }
+.grid-pelis { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
+    gap: 20px; 
+}
+.tarjeta { background: #222; border-radius: 8px; overflow: hidden; border: 1px solid #444; }
+.tarjeta img { width: 100%; height: auto; }
+.tarjeta .info { padding: 10px; }
+.tarjeta h3 { font-size: 0.9rem; margin: 0; }
+.tarjeta p { font-size: 0.7rem; color: #aaa; }
+button { padding: 10px; margin: 5px; cursor: pointer; }

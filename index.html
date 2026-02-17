@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mi Catálogo de Cine</title>
+    <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+
+<meta name="theme-color" content="#e50914">
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+<script>
+  // Registramos el Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
+</head>
+<body>
+    <header>
+    <h1>🎬 Mi Videoteca Personal</h1>
+    <div class="controles">
+        <button onclick="cambiarTipo('movie')">Películas</button>
+        <button onclick="cambiarTipo('tv')">Series</button>
+        
+        <select id="desplegable-generos" onchange="ejecutarFiltros()">
+            <option value="">Todos los géneros</option>
+        </select>
+
+        <select id="desplegable-anios" onchange="ejecutarFiltros()">
+            <option value="">Cualquier año</option>
+            </select>
+	<select id="desplegable-vistas" onchange="ejecutarFiltros()">
+    	<option value="todas">Todas (Vistas y No vistas)</option>
+	<option value="vistas">Solo Vistas</option>
+    	<option value="no-vistas">Solo Pendientes (No vistas)</option>
+        </select>
+    </div>
+    <h2 id="titulo-seccion">Películas Populares</h2>
+    </header>
+
+    <main id="contenedor-principal" class="grid-pelis"></main>
+
+    <script src="script.js"></script>
+</body>
+</html>
