@@ -7,6 +7,8 @@ let listaVistas = JSON.parse(localStorage.getItem('mis_vistas')) || [];
 let paginaActual = 1;
 
 // --- FILTROS Y CARGA ---
+
+// 2. Modifica la función cargarContenido para que acepte el número de página
 async function cargarContenido(generoId = '', anio = '', estadoVista = 'todas', esNuevaCarga = true) {
     const contenedor = document.getElementById('contenedor-principal');
     
@@ -43,6 +45,8 @@ async function cargarContenido(generoId = '', anio = '', estadoVista = 'todas', 
     }
 }
 
+
+// 3. Modifica dibujarCatalogo para que no borre todo si estamos cargando más
 function dibujarCatalogo(lista, borrarAnterior) {
     const contenedor = document.getElementById('contenedor-principal');
     if (borrarAnterior) {
