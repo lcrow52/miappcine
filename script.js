@@ -7,13 +7,16 @@ let paginaActual = 1;
 let listaVistas = JSON.parse(localStorage.getItem('mis_vistas')) || [];
 let listaFavoritos = JSON.parse(localStorage.getItem('mis_favoritos')) || [];
 
+// --- CARGA DE DATOS ---
 async function cargarContenido(generoId = '', anio = '', estadoVista = 'todas', esNuevaCarga = true, estadoFavorito = 'todos') {
     const contenedor = document.getElementById('contenedor-principal');
+    
     if (esNuevaCarga) {
         paginaActual = 1;
-        contenedor.innerHTML = '<p>Buscando en plataformas...</p>';
+        contenedor.innerHTML = '<p style="padding:20px;">Buscando en plataformas de España...</p>';
     }
 
+    // Filtros de región España y disponibilidad en plataformas
     let url = `${URL_BASE}/discover/${tipoActual}?api_key=${API_KEY}&language=es-ES&sort_by=popularity.desc&watch_region=ES&with_watch_monetization_types=flatrate&page=${paginaActual}`;
     
     if (generoId) url += `&with_genres=${generoId}`;
@@ -27,14 +30,14 @@ async function cargarContenido(generoId = '', anio = '', estadoVista = 'todas', 
         const datos = await respuesta.json();
         let resultados = datos.results;
 
-        // Filtro Vistas
+        // Filtro de Vistas/Pendientes
         if (estadoVista === 'vistas') {
             resultados = resultados.filter(item => listaVistas.includes(item.id.toString()));
         } else if (estadoVista === 'no-vistas') {
             resultados = resultados.filter(item => !listaVistas.includes(item.id.toString()));
         }
 
-        // Filtro Favoritos
+        // Filtro de Favoritos
         if (estadoFavorito === 'solo-favoritos') {
             resultados = resultados.filter(item => listaFavoritos.includes(item.id.toString()));
         }
@@ -45,9 +48,15 @@ async function cargarContenido(generoId = '', anio = '', estadoVista = 'todas', 
     }
 }
 
+// --- DIBUJAR EN PANTALLA ---
 function dibujarCatalogo(lista, borrarAnterior) {
     const contenedor = document.getElementById('contenedor-principal');
     if (borrarAnterior) contenedor.innerHTML = '';
+
+    if (lista.length === 0 && borrarAnterior) {
+        contenedor.innerHTML = '<p style="padding:20px;">No se encontraron resultados con estos filtros.</p>';
+        return;
+    }
 
     lista.forEach(item => {
         const titulo = item.title || item.name;
@@ -64,13 +73,13 @@ function dibujarCatalogo(lista, borrarAnterior) {
             <div class="info">
                 <h3>${titulo}</h3>
                 <div class="acciones" style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.8rem;">
-                    <label style="cursor:pointer;">
-                        <input type="checkbox" ${estaVista ? 'checked' : ''} onchange="toggleVista('${id}')"> 
-                        ${estaVista ? 'Vista' : 'Pendiente'}
+                    <label style="cursor:pointer; display: flex; align-items: center; gap: 4px;">
+                        <input type="checkbox" ${estaVista ? 'checked' : ''} onchange="toggleVista('${id}', event)"> 
+                        <span>${estaVista ? ' Vista' : ' Pendiente'}</span>
                     </label>
-                    <label style="cursor:pointer; color: ${esFavorito ? '#ff4757' : '#ccc'}">
-                        <input type="checkbox" ${esFavorito ? 'checked' : ''} onchange="toggleFavorito('${id}')"> 
-                        ${esFavorito ? '❤️ Fav' : '♡ Fav'}
+                    <label style="cursor:pointer; display: flex; align-items: center; gap: 4px; color: ${esFavorito ? '#ff4757' : '#ccc'}">
+                        <input type="checkbox" ${esFavorito ? 'checked' : ''} onchange="toggleFavorito('${id}', event)"> 
+                        <span>${esFavorito ? ' ❤️ Fav' : ' ♡ Fav'}</span>
                     </label>
                 </div>
             </div>
@@ -79,20 +88,43 @@ function dibujarCatalogo(lista, borrarAnterior) {
     });
 }
 
-function toggleVista(id) {
+// --- FUNCIONES DE MEMORIA (SIN RECARGA DE SCROLL) ---
+function toggleVista(id, event) {
     id = id.toString();
-    listaVistas.includes(id) ? listaVistas = listaVistas.filter(i => i !== id) : listaVistas.push(id);
+    const checkbox = event.target;
+    const textoSpan = checkbox.nextElementSibling;
+
+    if (listaVistas.includes(id)) {
+        listaVistas = listaVistas.filter(i => i !== id);
+        textoSpan.textContent = ' Pendiente';
+    } else {
+        listaVistas.push(id);
+        textoSpan.textContent = ' Vista';
+    }
     localStorage.setItem('mis_vistas', JSON.stringify(listaVistas));
-    ejecutarFiltros();
+    // No llamamos a ejecutarFiltros() para evitar el salto de scroll
 }
 
-function toggleFavorito(id) {
+function toggleFavorito(id, event) {
     id = id.toString();
-    listaFavoritos.includes(id) ? listaFavoritos = listaFavoritos.filter(i => i !== id) : listaFavoritos.push(id);
+    const checkbox = event.target;
+    const label = checkbox.parentElement;
+    const textoSpan = checkbox.nextElementSibling;
+
+    if (listaFavoritos.includes(id)) {
+        listaFavoritos = listaFavoritos.filter(i => i !== id);
+        label.style.color = '#ccc';
+        textoSpan.textContent = ' ♡ Fav';
+    } else {
+        listaFavoritos.push(id);
+        label.style.color = '#ff4757';
+        textoSpan.textContent = ' ❤️ Fav';
+    }
     localStorage.setItem('mis_favoritos', JSON.stringify(listaFavoritos));
-    ejecutarFiltros();
+    // No llamamos a ejecutarFiltros() para evitar el salto de scroll
 }
 
+// --- FILTROS Y NAVEGACIÓN ---
 function ejecutarFiltros() {
     const g = document.getElementById('desplegable-generos').value;
     const a = document.getElementById('desplegable-anios').value;
@@ -111,26 +143,3 @@ function siguientePagina() {
 }
 
 function cambiarTipo(nuevoTipo) {
-    tipoActual = nuevoTipo;
-    document.getElementById('titulo-seccion').innerText = tipoActual === 'movie' ? 'Películas' : 'Series';
-    cargarGeneros();
-    cargarContenido();
-}
-
-async function cargarGeneros() {
-    const res = await fetch(`${URL_BASE}/genre/${tipoActual}/list?api_key=${API_KEY}&language=es-ES`);
-    const datos = await res.json();
-    const select = document.getElementById('desplegable-generos');
-    select.innerHTML = '<option value="">Todos los géneros</option>';
-    datos.genres.forEach(g => select.innerHTML += `<option value="${g.id}">${g.name}</option>`);
-}
-
-function cargarAnios() {
-    const select = document.getElementById('desplegable-anios');
-    for (let i = new Date().getFullYear(); i >= 2005; i--) {
-        select.innerHTML += `<option value="${i}">${i}</option>`;
-    }
-}
-
-cargarAnios();
-cambiarTipo('movie');
