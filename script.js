@@ -7,21 +7,20 @@ let paginaActual = 1;
 let listaVistas = JSON.parse(localStorage.getItem('mis_vistas')) || [];
 let listaFavoritos = JSON.parse(localStorage.getItem('mis_favoritos')) || [];
 
-// --- CARGA DE DATOS ---
-
+// --- CARGA DE DATOS CON AUTO-RELLENO ---
 async function cargarContenido(generoId = '', anio = '', estadoVista = 'todas', esNuevaCarga = true, estadoFavorito = 'todos') {
     const contenedor = document.getElementById('contenedor-principal');
-    const MINIMO_PELIS = 12; // Número mínimo que queremos mostrar
+    const MINIMO_TITULOS = 12; // Aseguramos al menos 12 miniaturas en pantalla
     let resultadosAcumulados = [];
     
     if (esNuevaCarga) {
         paginaActual = 1;
-        contenedor.innerHTML = '<p style="padding:20px;">Buscando títulos disponibles...</p>';
+        contenedor.innerHTML = '<p style="padding:20px;">Buscando en plataformas de España...</p>';
     }
 
     try {
-        // Bucle para rellenar la pantalla si hay pocos resultados tras filtrar
-        while (resultadosAcumulados.length < MINIMO_PELIS && paginaActual < 500) {
+        // Bucle inteligente: pide páginas hasta que tengamos suficientes resultados que pasen tus filtros
+        while (resultadosAcumulados.length < MINIMO_TITULOS && paginaActual < 100) {
             let url = `${URL_BASE}/discover/${tipoActual}?api_key=${API_KEY}&language=es-ES&sort_by=popularity.desc&watch_region=ES&with_watch_monetization_types=flatrate&page=${paginaActual}`;
             
             if (generoId) url += `&with_genres=${generoId}`;
@@ -34,34 +33,33 @@ async function cargarContenido(generoId = '', anio = '', estadoVista = 'todas', 
             const datos = await respuesta.json();
             let resultadosDePagina = datos.results;
 
-            // Si no hay más resultados en la API, salimos del bucle
             if (!resultadosDePagina || resultadosDePagina.length === 0) break;
 
-            // --- APLICAR TUS FILTROS DE MEMORIA ---
+            // Aplicar filtros de tu memoria local (Vistas y Favoritos)
+            let filtrados = resultadosDePagina;
+
             if (estadoVista === 'vistas') {
-                resultadosDePagina = resultadosDePagina.filter(item => listaVistas.includes(item.id.toString()));
+                filtrados = filtrados.filter(item => listaVistas.includes(item.id.toString()));
             } else if (estadoVista === 'no-vistas') {
-                resultadosDePagina = resultadosDePagina.filter(item => !listaVistas.includes(item.id.toString()));
+                filtrados = filtrados.filter(item => !listaVistas.includes(item.id.toString()));
             }
 
             if (estadoFavorito === 'solo-favoritos') {
-                resultadosDePagina = resultadosDePagina.filter(item => listaFavoritos.includes(item.id.toString()));
+                filtrados = filtrados.filter(item => listaFavoritos.includes(item.id.toString()));
             }
 
-            // Acumulamos los resultados que han pasado los filtros
-            resultadosAcumulados = [...resultadosAcumulados, ...resultadosDePagina];
+            // Sumamos lo que hemos encontrado en esta página
+            resultadosAcumulados = [...resultadosAcumulados, ...filtrados];
 
-            // Si aún no tenemos suficientes, aumentamos la página para la siguiente vuelta del bucle
-            if (resultadosAcumulados.length < MINIMO_PELIS) {
+            // Si aún no llegamos al mínimo, pasamos a la siguiente página de la API
+            if (resultadosAcumulados.length < MINIMO_TITULOS) {
                 paginaActual++;
             } else {
-                // Si ya tenemos suficientes, paramos
-                break;
+                break; 
             }
         }
 
         dibujarCatalogo(resultadosAcumulados, esNuevaCarga);
-
     } catch (error) {
         console.error("Error cargando contenido:", error);
     }
@@ -73,7 +71,7 @@ function dibujarCatalogo(lista, borrarAnterior) {
     if (borrarAnterior) contenedor.innerHTML = '';
 
     if (lista.length === 0 && borrarAnterior) {
-        contenedor.innerHTML = '<p style="padding:20px;">No se encontraron resultados con estos filtros.</p>';
+        contenedor.innerHTML = '<p style="padding:20px;">No hay resultados que coincidan con tus filtros en las plataformas de España.</p>';
         return;
     }
 
@@ -107,12 +105,11 @@ function dibujarCatalogo(lista, borrarAnterior) {
     });
 }
 
-// --- FUNCIONES DE MEMORIA (SIN RECARGA DE SCROLL) ---
+// --- FUNCIONES DE MEMORIA (SIN SALTO DE SCROLL) ---
 function toggleVista(id, event) {
     id = id.toString();
     const checkbox = event.target;
     const textoSpan = checkbox.nextElementSibling;
-
     if (listaVistas.includes(id)) {
         listaVistas = listaVistas.filter(i => i !== id);
         textoSpan.textContent = ' Pendiente';
@@ -121,7 +118,6 @@ function toggleVista(id, event) {
         textoSpan.textContent = ' Vista';
     }
     localStorage.setItem('mis_vistas', JSON.stringify(listaVistas));
-    // No llamamos a ejecutarFiltros() para evitar el salto de scroll
 }
 
 function toggleFavorito(id, event) {
@@ -129,7 +125,6 @@ function toggleFavorito(id, event) {
     const checkbox = event.target;
     const label = checkbox.parentElement;
     const textoSpan = checkbox.nextElementSibling;
-
     if (listaFavoritos.includes(id)) {
         listaFavoritos = listaFavoritos.filter(i => i !== id);
         label.style.color = '#ccc';
@@ -140,10 +135,9 @@ function toggleFavorito(id, event) {
         textoSpan.textContent = ' ❤️ Fav';
     }
     localStorage.setItem('mis_favoritos', JSON.stringify(listaFavoritos));
-    // No llamamos a ejecutarFiltros() para evitar el salto de scroll
 }
 
-// --- FILTROS Y NAVEGACIÓN ---
+// --- NAVEGACIÓN Y FILTROS ---
 function ejecutarFiltros() {
     const g = document.getElementById('desplegable-generos').value;
     const a = document.getElementById('desplegable-anios').value;
@@ -153,7 +147,7 @@ function ejecutarFiltros() {
 }
 
 function siguientePagina() {
-    paginaActual++;
+    paginaActual++; // Al pulsar cargar más, empezamos desde la siguiente página disponible
     const g = document.getElementById('desplegable-generos').value;
     const a = document.getElementById('desplegable-anios').value;
     const v = document.getElementById('desplegable-vistas').value;
@@ -164,7 +158,7 @@ function siguientePagina() {
 function cambiarTipo(nuevoTipo) {
     tipoActual = nuevoTipo;
     document.getElementById('titulo-seccion').innerText = tipoActual === 'movie' ? 'Películas' : 'Series';
-    // Limpiamos filtros al cambiar de tipo
+    // Reset de selectores visuales
     document.getElementById('desplegable-generos').value = "";
     document.getElementById('desplegable-anios').value = "";
     document.getElementById('desplegable-vistas').value = "todas";
@@ -178,9 +172,7 @@ async function cargarGeneros() {
     const datos = await res.json();
     const select = document.getElementById('desplegable-generos');
     select.innerHTML = '<option value="">Todos los géneros</option>';
-    datos.genres.forEach(g => {
-        select.innerHTML += `<option value="${g.id}">${g.name}</option>`;
-    });
+    datos.genres.forEach(g => select.innerHTML += `<option value="${g.id}">${g.name}</option>`);
 }
 
 function cargarAnios() {
@@ -190,6 +182,5 @@ function cargarAnios() {
     }
 }
 
-// Inicio de la App
 cargarAnios();
 cambiarTipo('movie');
