@@ -72,21 +72,18 @@ function dibujarCatalogo(lista, borrarAnterior) {
             </a>
             <div class="info">
                 <h3>${titulo}</h3>
-                <div class="acciones">
+                <div class="acciones" style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.8rem;">
                     <label>
                         <input type="checkbox" ${estaVista ? 'checked' : ''} onchange="toggleVista('${id}')"> 
                         ${estaVista ? 'Vista' : 'Pendiente'}
                     </label>
-                    <label style="margin-left: 10px; color: ${esFavorito ? '#ff4757' : '#ccc'}">
+                    <label style="color: ${esFavorito ? '#ff4757' : '#ccc'}">
                         <input type="checkbox" ${esFavorito ? 'checked' : ''} onchange="toggleFavorito('${id}')"> 
                         ${esFavorito ? '❤️ Fav' : '♡ Fav'}
                     </label>
                 </div>
             </div>
         `;
-        contenedor.appendChild(tarjeta);
-    });
-}
 
 // 4. Nueva función para el botón
 function siguientePagina() {
