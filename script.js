@@ -143,3 +143,34 @@ function siguientePagina() {
 }
 
 function cambiarTipo(nuevoTipo) {
+    tipoActual = nuevoTipo;
+    document.getElementById('titulo-seccion').innerText = tipoActual === 'movie' ? 'Películas' : 'Series';
+    // Limpiamos filtros al cambiar de tipo
+    document.getElementById('desplegable-generos').value = "";
+    document.getElementById('desplegable-anios').value = "";
+    document.getElementById('desplegable-vistas').value = "todas";
+    document.getElementById('desplegable-favoritos').value = "todos";
+    cargarGeneros();
+    cargarContenido();
+}
+
+async function cargarGeneros() {
+    const res = await fetch(`${URL_BASE}/genre/${tipoActual}/list?api_key=${API_KEY}&language=es-ES`);
+    const datos = await res.json();
+    const select = document.getElementById('desplegable-generos');
+    select.innerHTML = '<option value="">Todos los géneros</option>';
+    datos.genres.forEach(g => {
+        select.innerHTML += `<option value="${g.id}">${g.name}</option>`;
+    });
+}
+
+function cargarAnios() {
+    const select = document.getElementById('desplegable-anios');
+    for (let i = new Date().getFullYear(); i >= 2005; i--) {
+        select.innerHTML += `<option value="${i}">${i}</option>`;
+    }
+}
+
+// Inicio de la App
+cargarAnios();
+cambiarTipo('movie');
