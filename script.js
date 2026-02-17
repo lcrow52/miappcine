@@ -4,14 +4,19 @@ const URL_IMG = 'https://image.tmdb.org/t/p/w500';
 
 let tipoActual = 'movie';
 let listaVistas = JSON.parse(localStorage.getItem('mis_vistas')) || [];
+let paginaActual = 1;
 
 // --- FILTROS Y CARGA ---
-async function cargarContenido(generoId = '', anio = '', estadoVista = 'todas') {
+async function cargarContenido(generoId = '', anio = '', estadoVista = 'todas', esNuevaCarga = true) {
     const contenedor = document.getElementById('contenedor-principal');
-    contenedor.innerHTML = '<p>Buscando en plataformas de España...</p>';
+    
+    // Si es una búsqueda nueva (cambio de filtro), reseteamos la página y borramos el grid
+    if (esNuevaCarga) {
+        paginaActual = 1;
+        contenedor.innerHTML = '<p>Buscando...</p>';
+    }
 
-    // Añadimos filtros para España y disponibilidad en plataformas (streaming)
-    let url = `${URL_BASE}/discover/${tipoActual}?api_key=${API_KEY}&language=es-ES&sort_by=popularity.desc&watch_region=ES&with_watch_monetization_types=flatrate`;
+    let url = `${URL_BASE}/discover/${tipoActual}?api_key=${API_KEY}&language=es-ES&sort_by=popularity.desc&watch_region=ES&with_watch_monetization_types=flatrate&page=${paginaActual}`;
     
     if (generoId) url += `&with_genres=${generoId}`;
     if (anio) {
@@ -24,23 +29,33 @@ async function cargarContenido(generoId = '', anio = '', estadoVista = 'todas') 
         const datos = await respuesta.json();
         let resultados = datos.results;
 
+        // Filtramos por vistas/no vistas
         if (estadoVista === 'vistas') {
             resultados = resultados.filter(item => listaVistas.includes(item.id.toString()));
         } else if (estadoVista === 'no-vistas') {
             resultados = resultados.filter(item => !listaVistas.includes(item.id.toString()));
         }
 
-        dibujarCatalogo(resultados);
+        // Llamamos a dibujar pasándole si debe borrar o añadir
+        dibujarCatalogo(resultados, esNuevaCarga);
     } catch (error) {
         console.error("Error:", error);
     }
 }
 
-function dibujarCatalogo(lista) {
+function dibujarCatalogo(lista, borrarAnterior) {
     const contenedor = document.getElementById('contenedor-principal');
-    contenedor.innerHTML = '';
+    if (borrarAnterior) {
+        contenedor.innerHTML = '';
+    }
+
+    if (lista.length === 0 && borrarAnterior) {
+        contenedor.innerHTML = '<p>No hay títulos que coincidan.</p>';
+        return;
+    }
 
     lista.forEach(item => {
+        // ... (todo el código interno de la tarjeta igual que antes)
         const titulo = item.title || item.name;
         const id = item.id.toString();
         const estaVista = listaVistas.includes(id);
@@ -62,6 +77,18 @@ function dibujarCatalogo(lista) {
         contenedor.appendChild(tarjeta);
     });
 }
+
+// 4. Nueva función para el botón
+function siguientePagina() {
+    paginaActual++; // Aumentamos el contador
+    const g = document.getElementById('desplegable-generos').value;
+    const a = document.getElementById('desplegable-anios').value;
+    const v = document.getElementById('desplegable-vistas').value;
+    
+    // Llamamos a cargarContenido con 'false' para que NO borre lo que ya hay
+    cargarContenido(g, a, v, false);
+}
+
 
 // (Las funciones toggleVista, cargarAnios, cambiarTipo y cargarGeneros se mantienen igual que antes)
 function toggleVista(id) {
