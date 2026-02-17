@@ -8,41 +8,60 @@ let listaVistas = JSON.parse(localStorage.getItem('mis_vistas')) || [];
 let listaFavoritos = JSON.parse(localStorage.getItem('mis_favoritos')) || [];
 
 // --- CARGA DE DATOS ---
+
 async function cargarContenido(generoId = '', anio = '', estadoVista = 'todas', esNuevaCarga = true, estadoFavorito = 'todos') {
     const contenedor = document.getElementById('contenedor-principal');
+    const MINIMO_PELIS = 12; // Número mínimo que queremos mostrar
+    let resultadosAcumulados = [];
     
     if (esNuevaCarga) {
         paginaActual = 1;
-        contenedor.innerHTML = '<p style="padding:20px;">Buscando en plataformas de España...</p>';
-    }
-
-    // Filtros de región España y disponibilidad en plataformas
-    let url = `${URL_BASE}/discover/${tipoActual}?api_key=${API_KEY}&language=es-ES&sort_by=popularity.desc&watch_region=ES&with_watch_monetization_types=flatrate&page=${paginaActual}`;
-    
-    if (generoId) url += `&with_genres=${generoId}`;
-    if (anio) {
-        const parametroAnio = (tipoActual === 'movie') ? 'primary_release_year' : 'first_air_date_year';
-        url += `&${parametroAnio}=${anio}`;
+        contenedor.innerHTML = '<p style="padding:20px;">Buscando títulos disponibles...</p>';
     }
 
     try {
-        const respuesta = await fetch(url);
-        const datos = await respuesta.json();
-        let resultados = datos.results;
+        // Bucle para rellenar la pantalla si hay pocos resultados tras filtrar
+        while (resultadosAcumulados.length < MINIMO_PELIS && paginaActual < 500) {
+            let url = `${URL_BASE}/discover/${tipoActual}?api_key=${API_KEY}&language=es-ES&sort_by=popularity.desc&watch_region=ES&with_watch_monetization_types=flatrate&page=${paginaActual}`;
+            
+            if (generoId) url += `&with_genres=${generoId}`;
+            if (anio) {
+                const parametroAnio = (tipoActual === 'movie') ? 'primary_release_year' : 'first_air_date_year';
+                url += `&${parametroAnio}=${anio}`;
+            }
 
-        // Filtro de Vistas/Pendientes
-        if (estadoVista === 'vistas') {
-            resultados = resultados.filter(item => listaVistas.includes(item.id.toString()));
-        } else if (estadoVista === 'no-vistas') {
-            resultados = resultados.filter(item => !listaVistas.includes(item.id.toString()));
+            const respuesta = await fetch(url);
+            const datos = await respuesta.json();
+            let resultadosDePagina = datos.results;
+
+            // Si no hay más resultados en la API, salimos del bucle
+            if (!resultadosDePagina || resultadosDePagina.length === 0) break;
+
+            // --- APLICAR TUS FILTROS DE MEMORIA ---
+            if (estadoVista === 'vistas') {
+                resultadosDePagina = resultadosDePagina.filter(item => listaVistas.includes(item.id.toString()));
+            } else if (estadoVista === 'no-vistas') {
+                resultadosDePagina = resultadosDePagina.filter(item => !listaVistas.includes(item.id.toString()));
+            }
+
+            if (estadoFavorito === 'solo-favoritos') {
+                resultadosDePagina = resultadosDePagina.filter(item => listaFavoritos.includes(item.id.toString()));
+            }
+
+            // Acumulamos los resultados que han pasado los filtros
+            resultadosAcumulados = [...resultadosAcumulados, ...resultadosDePagina];
+
+            // Si aún no tenemos suficientes, aumentamos la página para la siguiente vuelta del bucle
+            if (resultadosAcumulados.length < MINIMO_PELIS) {
+                paginaActual++;
+            } else {
+                // Si ya tenemos suficientes, paramos
+                break;
+            }
         }
 
-        // Filtro de Favoritos
-        if (estadoFavorito === 'solo-favoritos') {
-            resultados = resultados.filter(item => listaFavoritos.includes(item.id.toString()));
-        }
+        dibujarCatalogo(resultadosAcumulados, esNuevaCarga);
 
-        dibujarCatalogo(resultados, esNuevaCarga);
     } catch (error) {
         console.error("Error cargando contenido:", error);
     }
