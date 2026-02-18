@@ -7,13 +7,84 @@
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#e50914">
+    <style>
+        /* Estilos específicos para la barra de búsqueda y filtros */
+        .filtros {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            padding: 15px;
+            background: #000;
+        }
+
+        .buscador-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+
+        #input-busqueda {
+            width: 80%;
+            max-width: 500px;
+            padding: 12px 20px;
+            border-radius: 25px 0 0 25px;
+            border: 1px solid #333;
+            background: #222;
+            color: white;
+            outline: none;
+            font-size: 16px;
+        }
+
+        #input-busqueda:focus {
+            border-color: #e50914;
+        }
+
+        .btn-buscar {
+            padding: 12px 20px;
+            border-radius: 0 25px 25px 0;
+            border: none;
+            background: #e50914;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        select, .btn-tipo {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #333;
+            background: #222;
+            color: white;
+            cursor: pointer;
+        }
+
+        .btn-tipo:hover, select:hover {
+            background: #333;
+        }
+
+        .grid-pelis {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+    </style>
 </head>
 <body>
     <header>
-        <h1 id="titulo-seccion">Películas</h1>
+        <h1 id="titulo-seccion" style="text-align: center; margin-top: 20px; color: #e50914;">Películas</h1>
+        
         <nav class="filtros">
-            <button onclick="cambiarTipo('movie')">Películas</button>
-            <button onclick="cambiarTipo('tv')">Series</button>
+            <div class="buscador-container">
+                <input type="text" id="input-busqueda" placeholder="Buscar por título..." 
+                       onkeyup="if(event.key === 'Enter') ejecutarBusqueda()">
+                <button class="btn-buscar" onclick="ejecutarBusqueda()">🔍</button>
+            </div>
+
+            <button class="btn-tipo" onclick="cambiarTipo('movie')">Películas</button>
+            <button class="btn-tipo" onclick="cambiarTipo('tv')">Series</button>
             
             <select id="desplegable-generos" onchange="ejecutarFiltros()">
                 <option value="">Cargando géneros...</option>
@@ -40,16 +111,21 @@
         </main>
 
     <div style="text-align: center; padding: 40px;">
-        <button id="btn-cargar-mas" onclick="siguientePagina()" style="background: #e50914; color: white; border: none; padding: 15px 40px; border-radius: 30px; cursor: pointer; font-weight: bold;">
-            Cargar más resultados
+        <button id="btn-cargar-mas" onclick="siguientePagina()" style="background: #e50914; color: white; border: none; padding: 15px 40px; border-radius: 30px; cursor: pointer; font-weight: bold; font-size: 1rem;">
+            Ver más resultados
         </button>
     </div>
 
-    <script src="script.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js');
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker registrado'))
+                    .catch(err => console.log('Error al registrar SW', err));
+            });
         }
     </script>
+
+    <script src="script.js"></script>
 </body>
 </html>
