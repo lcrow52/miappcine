@@ -2,7 +2,6 @@ const API_KEY = '7d58ecd9d52094c0cb6f1bd55c6d6a88';
 const URL_BASE = 'https://api.themoviedb.org/3';
 const URL_IMG = 'https://image.tmdb.org/t/p/w500';
 
-// Estado global persistente
 let estado = JSON.parse(localStorage.getItem('estado_app')) || {
     tipo: 'both',
     genero: '',
@@ -16,7 +15,6 @@ let estado = JSON.parse(localStorage.getItem('estado_app')) || {
 let listaVistas = JSON.parse(localStorage.getItem('mis_vistas')) || [];
 let listaFavoritos = JSON.parse(localStorage.getItem('mis_favoritos')) || [];
 
-// --- INICIALIZACIÓN ---
 function inicializar() {
     cargarAnios();
     sincronizarInterfaz();
@@ -31,7 +29,6 @@ function sincronizarInterfaz() {
     document.getElementById('desplegable-favoritos').value = estado.favorito;
     document.getElementById('input-busqueda').value = estado.busqueda;
     
-    // Actualizar botones de tipo
     document.querySelectorAll('.btn-tipo').forEach(btn => btn.classList.remove('activo'));
     const btnActivo = document.getElementById(`btn-${estado.tipo}`);
     if (btnActivo) btnActivo.classList.add('activo');
@@ -40,22 +37,23 @@ function sincronizarInterfaz() {
     document.getElementById('titulo-seccion').innerText = titulos[estado.tipo];
 }
 
-// --- CARGA DE CONTENIDO ---
 async function cargarContenido(esNuevaCarga = true) {
     const contenedor = document.getElementById('contenedor-principal');
     const MINIMO = 12;
     let resultadosAcumulados = [];
     
+    // Si buscamos favoritos, ampliamos el límite de búsqueda para encontrar los títulos guardados
+    const limitePaginas = estado.favorito === 'solo-favoritos' ? 50 : 15;
+
     if (esNuevaCarga) {
         estado.pagina = 1;
-        contenedor.innerHTML = '<p style="padding:20px;">Cargando...</p>';
+        contenedor.innerHTML = '<p style="padding:20px;">Escaneando tu biblioteca...</p>';
     }
 
     try {
-        // Buscamos hasta llenar el mínimo o llegar a un límite de páginas
-        while (resultadosAcumulados.length < MINIMO && estado.pagina < 20) {
+        while (resultadosAcumulados.length < MINIMO && estado.pagina <= limitePaginas) {
             let tiposABuscar = estado.tipo === 'both' ? ['movie', 'tv'] : [estado.tipo];
-            let resultadosDeEstaPagina = [];
+            let resultadosTemporales = [];
 
             for (let t of tiposABuscar) {
                 let url = "";
@@ -69,26 +67,28 @@ async function cargarContenido(esNuevaCarga = true) {
 
                 const res = await fetch(url);
                 const data = await res.json();
-                let filtrados = data.results || [];
-
-                // Guardamos el tipo para el enlace a detalle
-                filtrados.forEach(i => i.media_type_manual = t);
-                resultadosDeEstaPagina = [...resultadosDeEstaPagina, ...filtrados];
+                if (data.results) {
+                    data.results.forEach(i => i.media_type_manual = t);
+                    resultadosTemporales = [...resultadosTemporales, ...data.results];
+                }
             }
 
-            // Aplicar Filtros de Usuario (Vistas y Favoritos)
+            // APLICAR FILTROS (Vistas y Favoritos)
+            let filtrados = resultadosTemporales;
+
             if (estado.vista === 'vistas') {
-                resultadosDeEstaPagina = resultadosDeEstaPagina.filter(i => listaVistas.includes(i.id.toString()));
+                filtrados = filtrados.filter(i => listaVistas.includes(i.id.toString()));
             } else if (estado.vista === 'no-vistas') {
-                resultadosDeEstaPagina = resultadosDeEstaPagina.filter(i => !listaVistas.includes(i.id.toString()));
+                filtrados = filtrados.filter(i => !listaVistas.includes(i.id.toString()));
             }
 
             if (estado.favorito === 'solo-favoritos') {
-                resultadosDeEstaPagina = resultadosDeEstaPagina.filter(i => listaFavoritos.includes(i.id.toString()));
+                filtrados = filtrados.filter(i => listaFavoritos.includes(i.id.toString()));
             }
 
-            resultadosAcumulados = [...resultadosAcumulados, ...resultadosDeEstaPagina];
+            resultadosAcumulados = [...resultadosAcumulados, ...filtrados];
 
+            // Si no hemos llenado la pantalla, saltamos a la siguiente página de la API
             if (resultadosAcumulados.length < MINIMO) {
                 estado.pagina++;
             } else {
@@ -98,7 +98,8 @@ async function cargarContenido(esNuevaCarga = true) {
 
         dibujarCatalogo(resultadosAcumulados, esNuevaCarga);
         localStorage.setItem('estado_app', JSON.stringify(estado));
-    } catch (e) { console.error("Error cargando:", e); }
+
+    } catch (e) { console.error("Error en carga:", e); }
 }
 
 function dibujarCatalogo(lista, borrarAnterior) {
@@ -106,11 +107,14 @@ function dibujarCatalogo(lista, borrarAnterior) {
     if (borrarAnterior) contenedor.innerHTML = '';
 
     if (lista.length === 0 && borrarAnterior) {
-        contenedor.innerHTML = '<p style="padding:20px;">No se encontraron resultados que coincidan con tus filtros.</p>';
+        contenedor.innerHTML = '<p style="padding:20px;">No hay resultados. Prueba a cambiar los filtros o a cargar más páginas.</p>';
         return;
     }
 
-    lista.forEach(item => {
+    // Eliminar duplicados si los hubiera (común al mezclar tipos)
+    const listaUnica = Array.from(new Map(lista.map(item => [item.id, item])).values());
+
+    listaUnica.forEach(item => {
         const id = item.id.toString();
         const tipo = item.media_type_manual;
         const estaV = listaVistas.includes(id);
@@ -134,7 +138,7 @@ function dibujarCatalogo(lista, borrarAnterior) {
     });
 }
 
-// --- GESTIÓN DE FILTROS ---
+// --- RESTO DE FUNCIONES (IGUALES) ---
 function ejecutarFiltros() {
     estado.genero = document.getElementById('desplegable-generos').value;
     estado.anio = document.getElementById('desplegable-anios').value;
@@ -167,7 +171,6 @@ function siguientePagina() {
     cargarContenido(false);
 }
 
-// --- MEMORIA (SIN SALTO DE SCROLL) ---
 function toggleVista(id, event) {
     id = id.toString();
     listaVistas.includes(id) ? listaVistas = listaVistas.filter(i => i !== id) : listaVistas.push(id);
@@ -185,7 +188,7 @@ function toggleFavorito(id, event) {
 }
 
 async function cargarGeneros() {
-    const t = estado.tipo === 'both' ? 'movie' : estado.tipo;
+    const t = (estado.tipo === 'both' || estado.tipo === '') ? 'movie' : estado.tipo;
     const res = await fetch(`${URL_BASE}/genre/${t}/list?api_key=${API_KEY}&language=es-ES`);
     const data = await res.json();
     const select = document.getElementById('desplegable-generos');
