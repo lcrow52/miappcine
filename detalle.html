@@ -7,46 +7,80 @@
     <link rel="stylesheet" href="style.css">
     <style>
         .detalle-container { display: flex; flex-wrap: wrap; gap: 30px; padding: 20px; max-width: 900px; margin: auto; }
-        .detalle-container img { width: 100%; max-width: 300px; border-radius: 10px; }
+        .detalle-container img { width: 100%; max-width: 300px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
         .texto-detalle { flex: 1; min-width: 300px; }
         .boton-volver { display: inline-block; margin-bottom: 20px; color: #e50914; text-decoration: none; font-weight: bold; }
-        .link-trailer { display: inline-block; margin-top: 15px; padding: 10px 20px; background: #e50914; color: white; text-decoration: none; border-radius: 5px; }
+        .link-trailer { display: inline-block; margin-top: 15px; padding: 10px 20px; background: #e50914; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; }
+        
+        /* Estilos para las plataformas */
+        .plataformas { margin-top: 20px; background: #222; padding: 15px; border-radius: 10px; }
+        .plataformas h3 { font-size: 1rem; margin-bottom: 10px; color: #aaa; }
+        .logos-container { display: flex; gap: 10px; flex-wrap: wrap; }
+        .logo-plataforma { width: 45px; height: 45px; border-radius: 8px; object-fit: cover; border: 1px solid #444; }
     </style>
 </head>
 <body>
-    <div id="contenido-detalle" class="detalle-container">Cargando...</div>
+    <div id="contenido-detalle" class="detalle-container">Cargando detalles y plataformas...</div>
+
     <script>
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
         const tipo = params.get('tipo');
-        const API_KEY = '7d58ecd9d52094c0cb6f1bd55c6d6a88';
+        const API_KEY = '7d58ecd9d52094c0cb6f1bd55c6d6a88'; // <--- PON TU KEY AQUÍ
 
         async function cargarDetalle() {
             try {
+                // 1. Obtener detalles básicos
                 const resDet = await fetch(`https://api.themoviedb.org/3/${tipo}/${id}?api_key=${API_KEY}&language=es-ES`);
                 const item = await resDet.json();
                 
+                // 2. Obtener tráiler
                 const resVid = await fetch(`https://api.themoviedb.org/3/${tipo}/${id}/videos?api_key=${API_KEY}&language=es-ES`);
                 const vidData = await resVid.json();
                 let trailer = vidData.results.find(v => v.type === 'Trailer' && v.site === 'YouTube');
 
-                if (!trailer) {
-                    const resVidOrg = await fetch(`https://api.themoviedb.org/3/${tipo}/${id}/videos?api_key=${API_KEY}`);
-                    const vidDataOrg = await resVidOrg.json();
-                    trailer = vidDataOrg.results.find(v => v.type === 'Trailer' && v.site === 'YouTube');
+                // 3. Obtener Plataformas (Watch Providers)
+                const resProv = await fetch(`https://api.themoviedb.org/3/${tipo}/${id}/watch/providers?api_key=${API_KEY}`);
+                const provData = await resProv.json();
+                
+                // Filtramos por España (ES) y por modalidad "flatrate" (suscripción)
+                const proveedoresES = provData.results?.ES?.flatrate || [];
+
+                let htmlPlataformas = "";
+                if (proveedoresES.length > 0) {
+                    htmlPlataformas = `
+                        <div class="plataformas">
+                            <h3>Disponible en suscripción:</h3>
+                            <div class="logos-container">
+                                ${proveedoresES.map(p => `
+                                    <img src="https://image.tmdb.org/t/p/original${p.logo_path}" 
+                                         class="logo-plataforma" 
+                                         title="${p.provider_name}" 
+                                         alt="${p.provider_name}">
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    htmlPlataformas = `<div class="plataformas"><h3>No disponible en suscripción (España)</h3></div>`;
                 }
 
                 document.getElementById('contenido-detalle').innerHTML = `
                     <img src="https://image.tmdb.org/t/p/w500${item.poster_path}" alt="Poster">
                     <div class="texto-detalle">
-                        <a href="index.html" class="boton-volver">← Volver</a>
+                        <a href="index.html" class="boton-volver">← Volver al catálogo</a>
                         <h1>${item.title || item.name}</h1>
-                        <p><strong>Sinopsis:</strong> ${item.overview || 'Sin descripción.'}</p>
+                        <p><strong>Sinopsis:</strong> ${item.overview || 'Sin descripción disponible.'}</p>
                         <p><strong>Puntuación:</strong> ⭐ ${item.vote_average.toFixed(1)}</p>
-                        ${trailer ? `<a href="https://www.youtube.com/watch?v=${trailer.key}" target="_blank" class="link-trailer">📺 Ver Tráiler</a>` : '<p>Tráiler no disponible</p>'}
+                        
+                        ${htmlPlataformas}
+
+                        ${trailer ? `<a href="https://www.youtube.com/watch?v=${trailer.key}" target="_blank" class="link-trailer">📺 Ver Tráiler en YouTube</a>` : '<p style="margin-top:15px;">Tráiler no disponible</p>'}
                     </div>
                 `;
-            } catch (e) { document.getElementById('contenido-detalle').innerHTML = "Error al cargar."; }
+            } catch (e) { 
+                document.getElementById('contenido-detalle').innerHTML = "Error al cargar los datos. Verifica tu API KEY."; 
+            }
         }
         cargarDetalle();
     </script>
