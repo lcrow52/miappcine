@@ -1,107 +1,132 @@
-const API_KEY = '7d58ecd9d52094c0cb6f1bd55c6d6a88'; 
+const API_KEY = 'TU_API_KEY_AQUÍ'; 
 const URL_BASE = 'https://api.themoviedb.org/3';
 const URL_IMG = 'https://image.tmdb.org/t/p/w500';
 
-let tipoActual = 'movie';
-let paginaActual = 1;
-let busquedaActiva = false; // Nueva variable para saber si estamos buscando
+// Estado global persistente
+let estado = JSON.parse(localStorage.getItem('estado_app')) || {
+    tipo: 'both',
+    genero: '',
+    anio: '',
+    vista: 'todas',
+    favorito: 'todos',
+    busqueda: '',
+    pagina: 1
+};
+
 let listaVistas = JSON.parse(localStorage.getItem('mis_vistas')) || [];
 let listaFavoritos = JSON.parse(localStorage.getItem('mis_favoritos')) || [];
 
-// --- FUNCIÓN PRINCIPAL DE CARGA ---
-async function cargarContenido(generoId = '', anio = '', estadoVista = 'todas', esNuevaCarga = true, estadoFavorito = 'todos') {
+// --- INICIALIZACIÓN ---
+function inicializar() {
+    cargarAnios();
+    sincronizarInterfaz();
+    cargarGeneros();
+    cargarContenido(true);
+}
+
+function sincronizarInterfaz() {
+    document.getElementById('desplegable-generos').value = estado.genero;
+    document.getElementById('desplegable-anios').value = estado.anio;
+    document.getElementById('desplegable-vistas').value = estado.vista;
+    document.getElementById('desplegable-favoritos').value = estado.favorito;
+    document.getElementById('input-busqueda').value = estado.busqueda;
+    
+    // Actualizar botones de tipo
+    document.querySelectorAll('.btn-tipo').forEach(btn => btn.classList.remove('activo'));
+    const btnActivo = document.getElementById(`btn-${estado.tipo}`);
+    if (btnActivo) btnActivo.classList.add('activo');
+
+    const titulos = { 'movie': 'Películas', 'tv': 'Series', 'both': 'Cine y Series' };
+    document.getElementById('titulo-seccion').innerText = titulos[estado.tipo];
+}
+
+// --- CARGA DE CONTENIDO ---
+async function cargarContenido(esNuevaCarga = true) {
     const contenedor = document.getElementById('contenedor-principal');
-    const query = document.getElementById('input-busqueda').value;
-    const MINIMO_TITULOS = 12;
+    const MINIMO = 12;
     let resultadosAcumulados = [];
     
     if (esNuevaCarga) {
-        paginaActual = 1;
-        contenedor.innerHTML = '<p style="padding:20px;">Cargando contenido...</p>';
+        estado.pagina = 1;
+        contenedor.innerHTML = '<p style="padding:20px;">Cargando...</p>';
     }
 
     try {
-        while (resultadosAcumulados.length < MINIMO_TITULOS && paginaActual < 20) {
-            let url = "";
-            
-            // Si hay texto en el buscador, usamos la API de búsqueda
-            if (query.trim() !== "") {
-                busquedaActiva = true;
-                url = `${URL_BASE}/search/${tipoActual}?api_key=${API_KEY}&language=es-ES&query=${encodeURIComponent(query)}&page=${paginaActual}&include_adult=false`;
-            } else {
-                busquedaActiva = false;
-                url = `${URL_BASE}/discover/${tipoActual}?api_key=${API_KEY}&language=es-ES&sort_by=popularity.desc&watch_region=ES&with_watch_monetization_types=flatrate&page=${paginaActual}`;
-                if (generoId) url += `&with_genres=${generoId}`;
-                if (anio) {
-                    const parametroAnio = (tipoActual === 'movie') ? 'primary_release_year' : 'first_air_date_year';
-                    url += `&${parametroAnio}=${anio}`;
+        // Buscamos hasta llenar el mínimo o llegar a un límite de páginas
+        while (resultadosAcumulados.length < MINIMO && estado.pagina < 20) {
+            let tiposABuscar = estado.tipo === 'both' ? ['movie', 'tv'] : [estado.tipo];
+            let resultadosDeEstaPagina = [];
+
+            for (let t of tiposABuscar) {
+                let url = "";
+                if (estado.busqueda) {
+                    url = `${URL_BASE}/search/${t}?api_key=${API_KEY}&language=es-ES&query=${encodeURIComponent(estado.busqueda)}&page=${estado.pagina}`;
+                } else {
+                    url = `${URL_BASE}/discover/${t}?api_key=${API_KEY}&language=es-ES&sort_by=popularity.desc&watch_region=ES&with_watch_monetization_types=flatrate&page=${estado.pagina}`;
+                    if (estado.genero) url += `&with_genres=${estado.genero}`;
+                    if (estado.anio) url += t === 'movie' ? `&primary_release_year=${estado.anio}` : `&first_air_date_year=${estado.anio}`;
                 }
+
+                const res = await fetch(url);
+                const data = await res.json();
+                let filtrados = data.results || [];
+
+                // Guardamos el tipo para el enlace a detalle
+                filtrados.forEach(i => i.media_type_manual = t);
+                resultadosDeEstaPagina = [...resultadosDeEstaPagina, ...filtrados];
             }
 
-            const respuesta = await fetch(url);
-            const datos = await respuesta.json();
-            let filtrados = datos.results || [];
-
-            if (filtrados.length === 0) break;
-
-            // Filtros de usuario (Vistas / Favoritos)
-            if (estadoVista === 'vistas') {
-                filtrados = filtrados.filter(item => listaVistas.includes(item.id.toString()));
-            } else if (estadoVista === 'no-vistas') {
-                filtrados = filtrados.filter(item => !listaVistas.includes(item.id.toString()));
+            // Aplicar Filtros de Usuario (Vistas y Favoritos)
+            if (estado.vista === 'vistas') {
+                resultadosDeEstaPagina = resultadosDeEstaPagina.filter(i => listaVistas.includes(i.id.toString()));
+            } else if (estado.vista === 'no-vistas') {
+                resultadosDeEstaPagina = resultadosDeEstaPagina.filter(i => !listaVistas.includes(i.id.toString()));
             }
 
-            if (estadoFavorito === 'solo-favoritos') {
-                filtrados = filtrados.filter(item => listaFavoritos.includes(item.id.toString()));
+            if (estado.favorito === 'solo-favoritos') {
+                resultadosDeEstaPagina = resultadosDeEstaPagina.filter(i => listaFavoritos.includes(i.id.toString()));
             }
 
-            resultadosAcumulados = [...resultadosAcumulados, ...filtrados];
+            resultadosAcumulados = [...resultadosAcumulados, ...resultadosDeEstaPagina];
 
-            if (resultadosAcumulados.length < MINIMO_TITULOS) {
-                paginaActual++;
+            if (resultadosAcumulados.length < MINIMO) {
+                estado.pagina++;
             } else {
                 break;
             }
         }
+
         dibujarCatalogo(resultadosAcumulados, esNuevaCarga);
-    } catch (error) {
-        console.error("Error:", error);
-    }
+        localStorage.setItem('estado_app', JSON.stringify(estado));
+    } catch (e) { console.error("Error cargando:", e); }
 }
 
-// --- DIBUJAR TARJETAS ---
 function dibujarCatalogo(lista, borrarAnterior) {
     const contenedor = document.getElementById('contenedor-principal');
     if (borrarAnterior) contenedor.innerHTML = '';
 
     if (lista.length === 0 && borrarAnterior) {
-        contenedor.innerHTML = '<p style="padding:20px;">No se han encontrado resultados.</p>';
+        contenedor.innerHTML = '<p style="padding:20px;">No se encontraron resultados que coincidan con tus filtros.</p>';
         return;
     }
 
     lista.forEach(item => {
-        const titulo = item.title || item.name;
         const id = item.id.toString();
-        const estaVista = listaVistas.includes(id);
-        const esFavorito = listaFavoritos.includes(id);
-        
+        const tipo = item.media_type_manual;
+        const estaV = listaVistas.includes(id);
+        const esF = listaFavoritos.includes(id);
         const tarjeta = document.createElement('div');
         tarjeta.classList.add('tarjeta');
+
         tarjeta.innerHTML = `
-            <a href="detalle.html?id=${id}&tipo=${tipoActual}">
-                <img src="${item.poster_path ? URL_IMG + item.poster_path : 'https://via.placeholder.com/200x300'}" alt="${titulo}">
+            <a href="detalle.html?id=${id}&tipo=${tipo}">
+                <img src="${item.poster_path ? URL_IMG + item.poster_path : 'https://via.placeholder.com/200x300'}" alt="poster">
             </a>
             <div class="info">
-                <h3>${titulo}</h3>
-                <div class="acciones" style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.8rem;">
-                    <label style="cursor:pointer; display: flex; align-items: center; gap: 4px;">
-                        <input type="checkbox" ${estaVista ? 'checked' : ''} onchange="toggleVista('${id}', event)"> 
-                        <span>${estaVista ? ' Vista' : ' Pendiente'}</span>
-                    </label>
-                    <label style="cursor:pointer; display: flex; align-items: center; gap: 4px; color: ${esFavorito ? '#ff4757' : '#ccc'}">
-                        <input type="checkbox" ${esFavorito ? 'checked' : ''} onchange="toggleFavorito('${id}', event)"> 
-                        <span>${esFavorito ? ' ❤️ Fav' : ' ♡ Fav'}</span>
-                    </label>
+                <h3>${item.title || item.name}</h3>
+                <div class="acciones" style="display:flex; justify-content:space-between; margin-top:10px; font-size:0.75rem;">
+                    <label style="cursor:pointer;"><input type="checkbox" ${estaV?'checked':''} onchange="toggleVista('${id}', event)"> ${estaV?'Vista':'Pendiente'}</label>
+                    <label style="cursor:pointer; color:${esF?'#ff4757':'#ccc'}"><input type="checkbox" ${esF?'checked':''} onchange="toggleFavorito('${id}', event)"> ${esF?'❤️ Fav':'♡ Fav'}</label>
                 </div>
             </div>
         `;
@@ -109,85 +134,76 @@ function dibujarCatalogo(lista, borrarAnterior) {
     });
 }
 
-// --- LOGICA DE BOTONES Y FILTROS ---
-function ejecutarBusqueda() {
-    ejecutarFiltros();
+// --- GESTIÓN DE FILTROS ---
+function ejecutarFiltros() {
+    estado.genero = document.getElementById('desplegable-generos').value;
+    estado.anio = document.getElementById('desplegable-anios').value;
+    estado.vista = document.getElementById('desplegable-vistas').value;
+    estado.favorito = document.getElementById('desplegable-favoritos').value;
+    cargarContenido(true);
 }
 
-function ejecutarFiltros() {
-    const g = document.getElementById('desplegable-generos').value;
-    const a = document.getElementById('desplegable-anios').value;
-    const v = document.getElementById('desplegable-vistas').value;
-    const f = document.getElementById('desplegable-favoritos').value;
-    cargarContenido(g, a, v, true, f);
+function ejecutarBusqueda() {
+    estado.busqueda = document.getElementById('input-busqueda').value;
+    cargarContenido(true);
+}
+
+function cambiarTipo(t) {
+    estado.tipo = t;
+    sincronizarInterfaz();
+    cargarGeneros();
+    cargarContenido(true);
+}
+
+function reiniciarFiltros() {
+    estado = { tipo: 'both', genero: '', anio: '', vista: 'todas', favorito: 'todos', busqueda: '', pagina: 1 };
+    sincronizarInterfaz();
+    cargarGeneros();
+    cargarContenido(true);
 }
 
 function siguientePagina() {
-    paginaActual++;
-    const g = document.getElementById('desplegable-generos').value;
-    const a = document.getElementById('desplegable-anios').value;
-    const v = document.getElementById('desplegable-vistas').value;
-    const f = document.getElementById('desplegable-favoritos').value;
-    cargarContenido(g, a, v, false, f);
+    estado.pagina++;
+    cargarContenido(false);
 }
 
-function cambiarTipo(nuevoTipo) {
-    tipoActual = nuevoTipo;
-    document.getElementById('titulo-seccion').innerText = tipoActual === 'movie' ? 'Películas' : 'Series';
-    document.getElementById('input-busqueda').value = ""; // Limpiar buscador al cambiar
-    document.getElementById('desplegable-generos').value = "";
-    document.getElementById('desplegable-anios').value = "";
-    cargarGeneros();
-    cargarContenido();
-}
-
-// --- MEMORIA LOCAL ---
+// --- MEMORIA (SIN SALTO DE SCROLL) ---
 function toggleVista(id, event) {
     id = id.toString();
-    const checkbox = event.target;
-    const textoSpan = checkbox.nextElementSibling;
-    if (listaVistas.includes(id)) {
-        listaVistas = listaVistas.filter(i => i !== id);
-        textoSpan.textContent = ' Pendiente';
-    } else {
-        listaVistas.push(id);
-        textoSpan.textContent = ' Vista';
-    }
+    listaVistas.includes(id) ? listaVistas = listaVistas.filter(i => i !== id) : listaVistas.push(id);
     localStorage.setItem('mis_vistas', JSON.stringify(listaVistas));
+    event.target.parentElement.lastChild.textContent = event.target.checked ? ' Vista' : ' Pendiente';
 }
 
 function toggleFavorito(id, event) {
     id = id.toString();
-    const checkbox = event.target;
-    const label = checkbox.parentElement;
-    const textoSpan = checkbox.nextElementSibling;
-    if (listaFavoritos.includes(id)) {
-        listaFavoritos = listaFavoritos.filter(i => i !== id);
-        label.style.color = '#ccc';
-        textoSpan.textContent = ' ♡ Fav';
-    } else {
-        listaFavoritos.push(id);
-        label.style.color = '#ff4757';
-        textoSpan.textContent = ' ❤️ Fav';
-    }
+    listaFavoritos.includes(id) ? listaFavoritos = listaFavoritos.filter(i => i !== id) : listaFavoritos.push(id);
     localStorage.setItem('mis_favoritos', JSON.stringify(listaFavoritos));
+    const label = event.target.parentElement;
+    label.style.color = event.target.checked ? '#ff4757' : '#ccc';
+    label.lastChild.textContent = event.target.checked ? ' ❤️ Fav' : ' ♡ Fav';
 }
 
-// --- CARGA INICIAL ---
 async function cargarGeneros() {
-    const res = await fetch(`${URL_BASE}/genre/${tipoActual}/list?api_key=${API_KEY}&language=es-ES`);
-    const datos = await res.json();
+    const t = estado.tipo === 'both' ? 'movie' : estado.tipo;
+    const res = await fetch(`${URL_BASE}/genre/${t}/list?api_key=${API_KEY}&language=es-ES`);
+    const data = await res.json();
     const select = document.getElementById('desplegable-generos');
     select.innerHTML = '<option value="">Todos los géneros</option>';
-    datos.genres.forEach(g => select.innerHTML += `<option value="${g.id}">${g.name}</option>`);
+    data.genres.forEach(g => {
+        const opt = document.createElement('option');
+        opt.value = g.id;
+        opt.textContent = g.name;
+        if(g.id == estado.genero) opt.selected = true;
+        select.appendChild(opt);
+    });
 }
 
 function cargarAnios() {
     const select = document.getElementById('desplegable-anios');
-    for (let i = new Date().getFullYear(); i >= 2005; i--) {
+    for (let i = 2026; i >= 2005; i--) {
         select.innerHTML += `<option value="${i}">${i}</option>`;
     }
 }
 
-cargarAnios();
-cambiarTipo('movie');
+inicializar();

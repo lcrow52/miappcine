@@ -5,17 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mi Videoteca Pro</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#e50914">
     <style>
-        /* Estilos específicos para la barra de búsqueda y filtros */
+        /* Feedback visual para filtros activos */
+        .btn-tipo.activo {
+            background-color: #e50914 !important;
+            color: white !important;
+            font-weight: bold;
+            box-shadow: 0 0 15px rgba(229, 9, 20, 0.4);
+            border: 1px solid white;
+        }
+
         .filtros {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
             gap: 10px;
-            padding: 15px;
+            padding: 20px;
             background: #000;
+        }
+
+        .controles-tipo {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+            width: 100%;
+            justify-content: center;
         }
 
         .buscador-container {
@@ -26,19 +40,13 @@
         }
 
         #input-busqueda {
-            width: 80%;
-            max-width: 500px;
-            padding: 12px 20px;
+            width: 70%;
+            max-width: 400px;
+            padding: 12px;
             border-radius: 25px 0 0 25px;
-            border: 1px solid #333;
+            border: none;
             background: #222;
             color: white;
-            outline: none;
-            font-size: 16px;
-        }
-
-        #input-busqueda:focus {
-            border-color: #e50914;
         }
 
         .btn-buscar {
@@ -48,11 +56,10 @@
             background: #e50914;
             color: white;
             cursor: pointer;
-            font-size: 16px;
         }
 
-        select, .btn-tipo {
-            padding: 10px;
+        select, .btn-tipo, .btn-reset {
+            padding: 10px 15px;
             border-radius: 5px;
             border: 1px solid #333;
             background: #222;
@@ -60,34 +67,32 @@
             cursor: pointer;
         }
 
-        .btn-tipo:hover, select:hover {
-            background: #333;
+        .btn-reset {
+            background: #444;
+            border-color: #555;
         }
 
-        .grid-pelis {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            gap: 20px;
-            padding: 20px;
-        }
+        .btn-reset:hover { background: #555; }
     </style>
 </head>
 <body>
     <header>
-        <h1 id="titulo-seccion" style="text-align: center; margin-top: 20px; color: #e50914;">Películas</h1>
+        <h1 id="titulo-seccion" style="text-align: center; color: #e50914; margin-top: 20px;">Cine y Series</h1>
         
         <nav class="filtros">
             <div class="buscador-container">
-                <input type="text" id="input-busqueda" placeholder="Buscar por título..." 
-                       onkeyup="if(event.key === 'Enter') ejecutarBusqueda()">
+                <input type="text" id="input-busqueda" placeholder="Buscar título..." onkeyup="if(event.key === 'Enter') ejecutarBusqueda()">
                 <button class="btn-buscar" onclick="ejecutarBusqueda()">🔍</button>
             </div>
 
-            <button class="btn-tipo" onclick="cambiarTipo('movie')">Películas</button>
-            <button class="btn-tipo" onclick="cambiarTipo('tv')">Series</button>
+            <div class="controles-tipo">
+                <button id="btn-movie" class="btn-tipo" onclick="cambiarTipo('movie')">Películas</button>
+                <button id="btn-tv" class="btn-tipo" onclick="cambiarTipo('tv')">Series</button>
+                <button id="btn-both" class="btn-tipo" onclick="cambiarTipo('both')">Todo</button>
+            </div>
             
             <select id="desplegable-generos" onchange="ejecutarFiltros()">
-                <option value="">Cargando géneros...</option>
+                <option value="">Todos los géneros</option>
             </select>
 
             <select id="desplegable-anios" onchange="ejecutarFiltros()">
@@ -104,6 +109,8 @@
                 <option value="todos">Todos los títulos</option>
                 <option value="solo-favoritos">❤️ Favoritos</option>
             </select>
+
+            <button class="btn-reset" onclick="reiniciarFiltros()">Reiniciar Filtros</button>
         </nav>
     </header>
 
@@ -111,20 +118,10 @@
         </main>
 
     <div style="text-align: center; padding: 40px;">
-        <button id="btn-cargar-mas" onclick="siguientePagina()" style="background: #e50914; color: white; border: none; padding: 15px 40px; border-radius: 30px; cursor: pointer; font-weight: bold; font-size: 1rem;">
+        <button id="btn-cargar-mas" onclick="siguientePagina()" style="background: #e50914; color: white; border: none; padding: 15px 40px; border-radius: 30px; cursor: pointer; font-weight: bold;">
             Ver más resultados
         </button>
     </div>
-
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('Service Worker registrado'))
-                    .catch(err => console.log('Error al registrar SW', err));
-            });
-        }
-    </script>
 
     <script src="script.js"></script>
 </body>
